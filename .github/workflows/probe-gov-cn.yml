@@ -1,0 +1,33 @@
+name: probe-gov-cn
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Runner location
+        run: |
+          echo "=== runner ==="
+          uname -a
+          curl -s -m 15 https://ipinfo.io/json || echo "ipinfo unavailable"
+          echo ""
+
+      - name: Probe China government sites
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+          for u in https://www.gov.cn/zhengce/zuixin/ https://www.gov.cn/zhengce/zhengceku/ https://www.ndrc.gov.cn/xxgk/zcfb/ https://www.miit.gov.cn/ http://www.pbc.gov.cn/ http://www.csrc.gov.cn/ https://www.mof.gov.cn/ https://www.most.gov.cn/ https://www.cac.gov.cn/ https://www.nda.gov.cn/ https://www.stats.gov.cn/ https://www.sse.com.cn/ ; do
+            code=$(curl -s -o /tmp/body.html -w "%{http_code}" -m 25 -A "$UA" -L "$u" 2>/dev/null) || code="CURL_ERR"
+            size=$(wc -c < /tmp/body.html 2>/dev/null || echo 0)
+            echo "RESULT|$u|HTTP=$code|bytes=$size"
+          done
+
+      - name: Probe market data lib
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check akshare 2>&1 | tail -3
+          python3 -c "import akshare as ak; df=ak.stock_zh_index_spot_em(); print('akshare OK rows=', len(df))" 2>&1 | tail -5
